@@ -1,0 +1,58 @@
+version: "3.3"
+services:
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=12345
+    volumes:
+      - password-manager-data:/data/db
+  mongo-express:
+    image: mongo-express
+    depends_on:
+      - mongo
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=12345
+      - ME_CONFIG_MONGODB_SERVER=mongo
+  password-manager-backend:
+    build:
+      context: ./password-manager-backend
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    depends_on:
+      - mongo
+    environment:
+      - PORT=5001
+      - MONGODB_URI=mongodb://admin:12345@mongo:27017/password-manager?authSource=admin
+      - ACCESS_TOKEN_SECRET=secret_key
+      - ACCESS_TOKEN_EXPIRY=30m
+      - CRYPTO_KEY=secret_key
+    # volumes:
+    #   - ./password-manager-backend:/usr/src/app
+    # command: npm run start
+  password-manager-react:
+    build:
+      context: ./password-manager-react
+      dockerfile: Dockerfile
+      args:
+        VITE_API_HOST_URL: "http://localhost:5001"
+        VITE_API_DEFAULT_PATH: "/api/v1"
+    ports:
+      - "3001:80"
+    # depends_on:
+    #   - password-manager-backend
+    environment:
+      - VITE_API_HOST_URL=http://localhost:5001
+      - VITE_API_DEFAULT_PATH=/api/v1
+    # volumes:
+    #   - ./password-manager-react:/usr/src/app
+    # command: npm run start
+volumes:
+  password-manager-data:
+    driver: local
